@@ -1,11 +1,25 @@
 package com.acme.iamcafelab.profiles.domain.model.aggregates;
 
+import com.acme.iamcafelab.iam.domain.model.aggregates.User;
 import com.acme.iamcafelab.profiles.domain.model.commands.CreateProfileCommand;
 import com.acme.iamcafelab.profiles.domain.model.valueobjects.EmailAddress;
 import com.acme.iamcafelab.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.Getter;
 
 @Entity
+@Table(
+        name = "profiles",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_profiles_user_id", columnNames = "user_id")
+        }
+)
 public class Profile extends AuditableAbstractAggregateRoot<Profile> {
 
     @Embedded
@@ -14,23 +28,27 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     })
     private EmailAddress emailAddress;
 
+    @Getter
     private String name;
-    private String password;
+    @Getter
     private String role;
+    @Getter
     private String cafeteriaName;
+    @Getter
     private String experience;
+    @Getter
     private String profilePicture;
+    @Getter
     private String paymentMethod;
     private boolean isFirstLogin;
+    @Getter
     private String plan;
     private boolean hasPlan;
 
-    /**
-     * FK opcional hacia users.id.
-     * En la tabla se mantiene como user_id para conservar compatibilidad con tu base anterior.
-     */
-    @Column(name = "user_id")
-    private Long iamUserId;
+    @Getter
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", unique = true)
+    private User user;
 
     public Profile() {
         this.emailAddress = new EmailAddress();
@@ -39,7 +57,6 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     public Profile(
             String name,
             String email,
-            String password,
             String role,
             String cafeteriaName,
             String experience,
@@ -51,7 +68,6 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     ) {
         this.name = name;
         this.emailAddress = new EmailAddress(email);
-        this.password = password;
         this.role = role;
         this.cafeteriaName = cafeteriaName;
         this.experience = experience;
@@ -66,15 +82,14 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this(
                 command.name(),
                 command.email(),
-                command.password(),
                 command.role(),
                 command.cafeteriaName(),
                 command.experience(),
                 command.profilePicture(),
                 command.paymentMethod(),
-                command.isFirstLogin(),
+                Boolean.TRUE.equals(command.isFirstLogin()),
                 command.plan(),
-                command.hasPlan()
+                Boolean.TRUE.equals(command.hasPlan())
         );
     }
 
@@ -88,10 +103,6 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
 
     public void updateEmailAddress(String email) {
         this.emailAddress = new EmailAddress(email);
-    }
-
-    public void updatePassword(String password) {
-        this.password = password;
     }
 
     public void updateRole(String role) {
@@ -126,51 +137,19 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.hasPlan = hasPlan;
     }
 
-    public String getName() {
-        return name;
+    public void linkUser(User user) {
+        this.user = user;
     }
 
-    public String getPassword() {
-        return password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public String getCafeteriaName() {
-        return cafeteriaName;
-    }
-
-    public String getExperience() {
-        return experience;
-    }
-
-    public String getProfilePicture() {
-        return profilePicture;
-    }
-
-    public String getPaymentMethod() {
-        return paymentMethod;
+    public Long getIamUserId() {
+        return user != null ? user.getId() : null;
     }
 
     public boolean isFirstLogin() {
         return isFirstLogin;
     }
 
-    public String getPlan() {
-        return plan;
-    }
-
     public boolean hasPlan() {
         return hasPlan;
-    }
-
-    public Long getIamUserId() {
-        return iamUserId;
-    }
-
-    public void setIamUserId(Long iamUserId) {
-        this.iamUserId = iamUserId;
     }
 }

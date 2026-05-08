@@ -40,7 +40,7 @@ public class ProfileCreatedEventHandler {
         profileRepository
                 .findByNormalizedEmail(normalizedEmail)
                 .ifPresent(profile -> {
-                    profile.setIamUserId(userOpt.get().getId());
+                    profile.linkUser(userOpt.get());
                     profileRepository.save(profile);
                 });
     }

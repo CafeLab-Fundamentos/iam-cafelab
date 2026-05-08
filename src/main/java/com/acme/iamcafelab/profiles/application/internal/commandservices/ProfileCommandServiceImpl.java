@@ -37,7 +37,6 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         var profile = new Profile(
                 command.name(),
                 command.email(),
-                command.password(),
                 command.role(),
                 command.cafeteriaName(),
                 command.experience(),
