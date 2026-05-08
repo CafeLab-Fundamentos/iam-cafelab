@@ -9,7 +9,7 @@ import com.acme.iamcafelab.profiles.domain.services.ProfileCommandService;
 import com.acme.iamcafelab.profiles.infrastructure.persistence.jpa.repositories.ProfileRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-
+import com.acme.iamcafelab.profiles.domain.model.events.ProfileEmailUpdatedEvent;
 import java.util.Optional;
 
 @Service
@@ -67,12 +67,20 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
         var updatedProfile = profile.get();
 
+        String oldEmail = updatedProfile.getEmailAddress();
+        boolean emailChanged = false;
+
         if (command.name() != null) {
             updatedProfile.updateName(command.name());
         }
 
         if (command.email() != null) {
-            updatedProfile.updateEmailAddress(command.email());
+            String newEmail = command.email().trim().toLowerCase();
+
+            if (oldEmail == null || !oldEmail.trim().equalsIgnoreCase(newEmail)) {
+                updatedProfile.updateEmailAddress(newEmail);
+                emailChanged = true;
+            }
         }
 
         if (command.cafeteriaName() != null) {
@@ -100,6 +108,16 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         }
 
         profileRepository.save(updatedProfile);
+
+        if (emailChanged) {
+            eventPublisher.publishEvent(
+                    new ProfileEmailUpdatedEvent(
+                            updatedProfile.getIamUserId(),
+                            oldEmail,
+                            updatedProfile.getEmailAddress()
+                    )
+            );
+        }
 
         return Optional.of(updatedProfile);
     }
