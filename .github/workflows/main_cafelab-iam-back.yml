@@ -9,6 +9,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
           distribution: 'microsoft'
 
       - name: Build with Maven
-        run: mvn clean install
+        run: mvn clean package -DskipTests
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -39,22 +42,37 @@ jobs:
     permissions:
       id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
-  
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: java-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0A4ED8F2671842DDB9DFF6B98DE1EFE5 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D1522AA6145E4A4A8E1D99539854063B }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5D0FC5AB5E8B47709315CA310AEE1468 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3003247B094E4CC2ADB0B8CAFFC764ED }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_365EA487B2494E91BC92217B0F71C4DD }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6A942C1F84854E039C17D2AD47BBA9F6 }}
+
+      - name: Configure Azure App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: 'cafelab-iam-back'
+          app-settings-json: |
+            [
+              { "name": "DB_USERNAME",             "value": "${{ secrets.DB_USERNAME }}",  "slotSetting": false },
+              { "name": "DB_PASSWORD",             "value": "${{ secrets.DB_PASSWORD }}",  "slotSetting": false },
+              { "name": "WEBSITE_RUN_FROM_PACKAGE","value": "0",                           "slotSetting": false },
+              { "name": "JAVA_OPTS",               "value": "-Dserver.port=8080",          "slotSetting": false },
+              { "name": "PORT",                    "value": "8080",                        "slotSetting": false }
+            ]
+
+      - name: Rename JAR
+        run: mv *.jar iam-cafelab-app.jar
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'cafelab-iam-back'
