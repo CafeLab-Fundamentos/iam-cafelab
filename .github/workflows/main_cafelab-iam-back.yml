@@ -69,13 +69,17 @@ jobs:
               { "name": "PORT",                    "value": "8080",                        "slotSetting": false }
             ]
 
+      - name: Wait for App Service to stabilize after settings change
+        run: sleep 30
+
       - name: Rename JAR
         run: mv *.jar iam-cafelab-app.jar
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
+        id: deploy-step
         with:
           app-name: 'cafelab-iam-back'
           slot-name: 'Production'
-          package: '*.jar'
+          package: 'iam-cafelab-app.jar'
           
