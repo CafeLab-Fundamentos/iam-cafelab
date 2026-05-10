@@ -41,7 +41,9 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     @Getter
     private String paymentMethod;
     private boolean isFirstLogin;
+
     @Getter
+    @Column(name = "subscription_plan")
     private String plan;
     private boolean hasPlan;
 
