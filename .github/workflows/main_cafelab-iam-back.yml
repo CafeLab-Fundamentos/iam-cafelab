@@ -66,20 +66,34 @@ jobs:
               { "name": "DB_PASSWORD",             "value": "${{ secrets.DB_PASSWORD }}",  "slotSetting": false },
               { "name": "WEBSITE_RUN_FROM_PACKAGE","value": "0",                           "slotSetting": false },
               { "name": "JAVA_OPTS",               "value": "-Dserver.port=8080",          "slotSetting": false },
-              { "name": "PORT",                    "value": "8080",                        "slotSetting": false }
+              { "name": "PORT",                    "value": "8080",                        "slotSetting": false },
+              { "name": "STARTUP_FILE",            "value": "java -jar /home/site/wwwroot/app.jar", "slotSetting": false }
             ]
 
-      - name: Wait for App Service to stabilize after settings change
-        run: sleep 30
+      - name: Get resource group
+        id: rg
+        run: echo "name=$(az webapp show --name cafelab-iam-back --query resourceGroup -o tsv)" >> $GITHUB_OUTPUT
 
-      - name: Rename JAR
-        run: mv *.jar iam-cafelab-app.jar
+      - name: Ensure App Service is started
+        run: az webapp start --name cafelab-iam-back --resource-group ${{ steps.rg.outputs.name }}
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        id: deploy-step
-        with:
-          app-name: 'cafelab-iam-back'
-          slot-name: 'Production'
-          package: 'iam-cafelab-app.jar'
-          
+      - name: Package JAR into ZIP
+        run: |
+          mkdir deploy
+          mv *.jar deploy/app.jar
+          cd deploy && zip -r ../app.zip .
+
+      - name: Wait for App Service to stabilize
+        run: sleep 45
+
+      - name: Deploy ZIP to Azure Web App
+        run: |
+          for i in 1 2 3; do
+            echo "Deploy attempt $i..."
+            az webapp deployment source config-zip \
+              --name cafelab-iam-back \
+              --resource-group ${{ steps.rg.outputs.name }} \
+              --src app.zip && break
+            echo "Attempt $i failed, waiting 30s before retry..."
+            sleep 30
+          done
