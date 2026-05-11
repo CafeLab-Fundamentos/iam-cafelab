@@ -70,12 +70,12 @@ jobs:
               { "name": "STARTUP_FILE",            "value": "java -jar /home/site/wwwroot/app.jar", "slotSetting": false }
             ]
 
-      - name: Get resource group
-        id: rg
-        run: echo "name=$(az webapp show --name cafelab-iam-back --query resourceGroup -o tsv)" >> $GITHUB_OUTPUT
-
-      - name: Ensure App Service is started
-        run: az webapp start --name cafelab-iam-back --resource-group ${{ steps.rg.outputs.name }}
+      - name: Get resource group and ensure app is started
+        run: |
+          RG=$(az webapp list --query "[?name=='cafelab-iam-back'].resourceGroup | [0]" -o tsv)
+          echo "RESOURCE_GROUP=$RG" >> $GITHUB_ENV
+          echo "Resource group found: $RG"
+          az webapp start --name cafelab-iam-back --resource-group $RG
 
       - name: Package JAR into ZIP
         run: |
@@ -92,7 +92,7 @@ jobs:
             echo "Deploy attempt $i..."
             az webapp deployment source config-zip \
               --name cafelab-iam-back \
-              --resource-group ${{ steps.rg.outputs.name }} \
+              --resource-group $RESOURCE_GROUP \
               --src app.zip && break
             echo "Attempt $i failed, waiting 30s before retry..."
             sleep 30
