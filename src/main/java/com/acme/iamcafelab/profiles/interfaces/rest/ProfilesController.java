@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import java.util.List;
 
@@ -62,6 +63,7 @@ public class ProfilesController {
 
     @GetMapping("/{userId}")
     @Operation(summary = "Get a profile by ID")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profile found"),
             @ApiResponse(responseCode = "404", description = "Profile not found")
@@ -81,6 +83,7 @@ public class ProfilesController {
 
     @GetMapping(params = "email")
     @Operation(summary = "Get profile by email")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profile found"),
             @ApiResponse(responseCode = "404", description = "Profile not found")
@@ -100,6 +103,7 @@ public class ProfilesController {
 
     @GetMapping
     @Operation(summary = "Get all profiles")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profiles found")
     })
@@ -115,6 +119,7 @@ public class ProfilesController {
 
     @PatchMapping("/{userId}")
     @Operation(summary = "Update profile", description = "Update an existing profile.")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profile updated successfully."),
             @ApiResponse(responseCode = "400", description = "Bad request."),

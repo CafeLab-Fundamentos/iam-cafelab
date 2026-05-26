@@ -81,8 +81,6 @@ public class BearerAuthorizationRequestFilter extends OncePerRequestFilter {
 
     private boolean isPublicPath(String path) {
         return path.startsWith("/api/v1/authentication/")
-                || path.equals("/api/v1/profiles")
-                || path.startsWith("/api/v1/profiles/")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-resources")

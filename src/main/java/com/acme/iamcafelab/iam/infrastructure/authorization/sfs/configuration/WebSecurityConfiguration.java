@@ -83,19 +83,28 @@ public class WebSecurityConfiguration {
                         customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger / OpenAPI
                         .requestMatchers(
                                 "/",
                                 "/error",
-                                "/api/v1/authentication/**",
-                                "/api/v1/profiles",
-                                "/api/v1/profiles/*",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .anyRequest().authenticated())
+
+                        // Authentication endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authentication/sign-in").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authentication/sign-up").permitAll()
+
+                        // Public profile registration
+                        .requestMatchers(HttpMethod.POST, "/api/v1/profiles").permitAll()
+
+                        // Everything else requires JWT
+                        .anyRequest().authenticated()
+                )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(
                         authorizationRequestFilter(),
