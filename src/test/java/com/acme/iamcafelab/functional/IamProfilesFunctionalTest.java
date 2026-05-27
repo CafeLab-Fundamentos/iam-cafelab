@@ -1,11 +1,13 @@
 package com.acme.iamcafelab.functional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.acme.iamcafelab.iam.infrastructure.persistence.jpa.repositories.UserRepository;
 import com.acme.iamcafelab.profiles.infrastructure.persistence.jpa.repositories.ProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,9 @@ class IamProfilesFunctionalTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private ProfileRepository profileRepository;
@@ -99,7 +104,10 @@ class IamProfilesFunctionalTest {
                                 """.formatted(email)))
                 .andExpect(status().isCreated());
 
+        String token = signInAndExtractToken(email, "123456");
+
         mockMvc.perform(get("/api/v1/profiles")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(token))
                         .param("email", email.toUpperCase()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Profile Finder"))
@@ -134,8 +142,10 @@ class IamProfilesFunctionalTest {
 
         var profile = profileRepository.findByNormalizedEmail(oldEmail).orElseThrow();
         Long profileId = profile.getId();
+        String token = signInAndExtractToken(oldEmail, "123456");
 
         mockMvc.perform(patch("/api/v1/profiles/{userId}", profileId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -172,8 +182,53 @@ class IamProfilesFunctionalTest {
 
     @Test
     void returnNotFoundForMissingProfileEndToEndTest() throws Exception {
-        mockMvc.perform(get("/api/v1/profiles/{userId}", 999999L))
+        String email = "missing-profile-" + UUID.randomUUID() + "@test.com";
+
+        mockMvc.perform(post("/api/v1/profiles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Missing Profile User",
+                                  "email": "%s",
+                                  "password": "123456",
+                                  "role": "barista",
+                                  "cafeteriaName": "CafeLab",
+                                  "experience": "1 year",
+                                  "profilePicture": "missing.png",
+                                  "paymentMethod": "Visa",
+                                  "isFirstLogin": true,
+                                  "plan": "basic",
+                                  "hasPlan": true
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isCreated());
+
+        String token = signInAndExtractToken(email, "123456");
+
+        mockMvc.perform(get("/api/v1/profiles/{userId}", 999999L)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(token)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Perfil no encontrado"));
+    }
+
+    private String signInAndExtractToken(String email, String password) throws Exception {
+        String responseBody = mockMvc.perform(post("/api/v1/authentication/sign-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "password": "%s"
+                                }
+                                """.formatted(email, password)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(responseBody).get("token").asText();
+    }
+
+    private String bearerToken(String token) {
+        return "Bearer " + token;
     }
 }
