@@ -1,6 +1,7 @@
 package com.acme.iamcafelab.iam.infrastructure.tokens.jwt.services;
 
 import com.acme.iamcafelab.iam.infrastructure.tokens.jwt.BearerTokenService;
+import com.acme.iamcafelab.profiles.infrastructure.persistence.jpa.repositories.ProfileRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -20,6 +21,7 @@ import org.springframework.util.StringUtils;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Locale;
 import java.util.function.Function;
 
 @Service
@@ -37,27 +39,47 @@ public class TokenServiceImpl implements BearerTokenService {
     @Value("${authorization.jwt.expiration.days}")
     private int expirationDays;
 
+    private final ProfileRepository profileRepository;
+
+    public TokenServiceImpl(ProfileRepository profileRepository) {
+        this.profileRepository = profileRepository;
+    }
+
     @Override
     public String generateToken(Authentication authentication) {
-        return buildTokenWithDefaultParameters(authentication.getName());
+        return generateToken(authentication.getName());
     }
 
     @Override
     public String generateToken(String username) {
-        return buildTokenWithDefaultParameters(username);
+        return buildToken(username, resolveProfileId(username));
     }
 
-    private String buildTokenWithDefaultParameters(String username) {
+    private Long resolveProfileId(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return profileRepository
+                .findByNormalizedEmail(email.trim().toLowerCase(Locale.ROOT))
+                .map(profile -> profile.getId())
+                .orElse(null);
+    }
+
+    private String buildToken(String username, Long userId) {
         var issuedAt = new Date();
         var expiration = DateUtils.addDays(issuedAt, expirationDays);
         var key = getSigningKey();
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(username)
                 .issuedAt(issuedAt)
-                .expiration(expiration)
-                .signWith(key)
-                .compact();
+                .expiration(expiration);
+
+        if (userId != null) {
+            builder.claim("userId", userId);
+        }
+
+        return builder.signWith(key).compact();
     }
 
     @Override

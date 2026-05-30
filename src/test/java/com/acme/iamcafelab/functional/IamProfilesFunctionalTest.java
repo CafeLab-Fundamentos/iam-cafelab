@@ -3,6 +3,8 @@ package com.acme.iamcafelab.functional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.acme.iamcafelab.iam.infrastructure.persistence.jpa.repositories.UserRepository;
 import com.acme.iamcafelab.profiles.infrastructure.persistence.jpa.repositories.ProfileRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -12,8 +14,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -66,8 +71,9 @@ class IamProfilesFunctionalTest {
 
         assertTrue(profileRepository.findByNormalizedEmail(email).isPresent());
         assertTrue(userRepository.findByEmailIgnoreCase(email).isPresent());
+        long profileId = profileRepository.findByNormalizedEmail(email).orElseThrow().getId();
 
-        mockMvc.perform(post("/api/v1/authentication/sign-in")
+        var signInResult = mockMvc.perform(post("/api/v1/authentication/sign-in")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -78,7 +84,20 @@ class IamProfilesFunctionalTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.role").value("barista"))
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.token").exists())
+                .andReturn();
+
+        String token = objectMapper.readTree(signInResult.getResponse().getContentAsString()).get("token").asText();
+        var claims = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(
+                        "test-only-secret-0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8)))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertEquals(email, claims.getSubject());
+        assertNotNull(claims.get("userId"));
+        assertEquals(profileId, claims.get("userId", Number.class).longValue());
     }
 
     @Test

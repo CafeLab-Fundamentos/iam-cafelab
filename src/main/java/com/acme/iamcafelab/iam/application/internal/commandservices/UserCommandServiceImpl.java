@@ -77,5 +77,3 @@ public class UserCommandServiceImpl implements UserCommandService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 }
-
-// deploy
