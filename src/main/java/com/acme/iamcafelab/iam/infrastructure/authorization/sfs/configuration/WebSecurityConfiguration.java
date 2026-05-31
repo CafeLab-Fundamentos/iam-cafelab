@@ -120,6 +120,7 @@ public class WebSecurityConfiguration {
 
         configuration.setAllowedOriginPatterns(
                 List.of(
+                        "https://front-funda.web.app",
                         "http://localhost:*",
                         "http://127.0.0.1:*",
                         "https://localhost:*",
